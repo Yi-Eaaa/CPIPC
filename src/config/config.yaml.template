@@ -1,0 +1,14 @@
+chat_model: "your_model_name"
+chat_api_key: "your_api_key"
+chat_base_url: "your_url"
+
+rerank_model: "your_model_name"
+rerank_api_key: "your_api_key"
+rerank_base_url: "your_url"
+
+embedding_model: "your_model_name"
+embedding_api_key: "your_api_key"
+embedding_base_url: "your_url"
+
+chunk_size: 1024
+chunk_overlap: 128

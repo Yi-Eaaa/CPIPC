@@ -1,0 +1,9 @@
+bm25_persist/*
+chroma_db/*
+src/config/__pycache__/*
+src/config/config.yaml
+.vscode/*
+dev.env
+src/llm/__pycache__/*
+src/rag/__pycache__/*
+src/retriever/__pycache__/*
