@@ -1,9 +1,9 @@
 import json
 
 import requests
-
 from config.config import GLOABLE_CONFIG
-from llm.api import SiliconFlowAPI
+
+from llm.agent import Agent
 from llm.prompts import PROMPTS
 
 chat_key = GLOABLE_CONFIG["chat_api_key"]
@@ -72,8 +72,8 @@ def hybrid_response(query, vector_docs, bm25_docs):
         )
 
     system_prompt = PROMPTS["RAG_PROMPT"].format(documents=provided_info)
-    client = SiliconFlowAPI(api_key=chat_key)
-    response = client.chat(
+    agent = Agent(api_key=chat_key)
+    response = agent.chat(
         model=GLOABLE_CONFIG["chat_model"],
         prompt=query,
         system_prompt=system_prompt,

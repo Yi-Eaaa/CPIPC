@@ -7,3 +7,5 @@ dev.env
 src/llm/__pycache__/*
 src/rag/__pycache__/*
 src/retriever/__pycache__/*
+text2triple_model/*
+datasets
