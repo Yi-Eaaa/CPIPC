@@ -5,6 +5,7 @@ import requests
 from config.config import GLOABLE_CONFIG
 from llm.api import SiliconFlowAPI
 from llm.prompts import PROMPTS
+from rag.utils import clean_json_text
 
 chat_key = GLOABLE_CONFIG["chat_api_key"]
 rerank_key = GLOABLE_CONFIG["rerank_api_key"]
@@ -20,7 +21,7 @@ def rerank(
     overlap_tokens=128,
     with_score=False,
 ):
-    url = GLOABLE_CONFIG["rerank_url"]
+    url = GLOABLE_CONFIG["rerank_base_url"]
 
     payload = {
         "model": model,
@@ -80,6 +81,8 @@ def hybrid_response(query, vector_docs, bm25_docs):
         extra_body={"enable_thinking": False},
     )
 
+    response = clean_json_text(response)
+    
     try:
         response_json = json.loads(response)
     except json.JSONDecodeError as e:
