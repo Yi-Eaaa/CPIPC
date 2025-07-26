@@ -51,12 +51,15 @@ class BM25Retriever:
         self.retriever.persist(persist_dir)
         # print(f"BM25 index saved to {persist_dir} successfully.")
 
-    def retrieve(self, query, with_score=False):
+    def retrieve(self, query, top_k=4, with_score=False):
         """
         Retrieve the top-k documents for the given query using BM25.
         """
         if self.retriever is None:
             self.existed_index()
+
+        self.retriever.similarity_top_k = top_k
+
         results = self.retriever.retrieve(query)
         documents = []
         scores = []
@@ -78,13 +81,8 @@ if __name__ == "__main__":
     bm25 = BM25Retriever()
 
     bm25.construct_index("./docs")
+    # bm25.existed_index("./bm25_persist")
     query = "Who is the author of 'A Christmas Carol'?"
-    documents, scores = bm25.retrieve(query, with_score=True)
+    documents, scores = bm25.retrieve(query, top_k=6, with_score=True)
     for document, score in zip(documents, scores):
         print(f"Content: {document}\nScore: {score}\n")
-
-    # bm25.existed_index("./bm25_persist")
-    # query = "Who is the author of 'A Christmas Carol'?"
-    # documents, scores = bm25.retrieve(query, with_score=True)
-    # for document, score in zip(documents, scores):
-    #     print(f"Content: {document}\nScore: {score}\n")
