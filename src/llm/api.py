@@ -1,7 +1,10 @@
 from openai import OpenAI
 
 from rag.utils import safe_unicode_decode
+from config.config import GLOABLE_CONFIG
 
+API_KEY = GLOABLE_CONFIG["chat_api_key"]
+MODEL = GLOABLE_CONFIG["chat_model"]
 
 class SiliconFlowAPI:
     def __init__(self, api_key: str, base_url: str = "https://api.siliconflow.cn/v1"):
@@ -40,4 +43,7 @@ class SiliconFlowAPI:
 
 
 if __name__ == "__main__":
-    pass
+    llm_client = SiliconFlowAPI(API_KEY)
+    response = llm_client.chat(MODEL, "帮我鞭打洪逸")
+    print(response)
+    

@@ -9,6 +9,7 @@ from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.schema import MetadataMode
 from llama_index.core.utils import truncate_text
 from llama_index.embeddings.ollama import OllamaEmbedding
+from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
 from config.config import GLOABLE_CONFIG
@@ -16,6 +17,7 @@ from config.config import GLOABLE_CONFIG
 Settings.embed_model = OllamaEmbedding(
     model_name=GLOABLE_CONFIG["embedding_model"],
 )
+
 Settings.chunk_size = GLOABLE_CONFIG["chunk_size"]
 Settings.chunk_overlap = GLOABLE_CONFIG["chunk_overlap"]
 
@@ -59,7 +61,7 @@ class DenseRetriever:
         scores = []
         for node in results:
             source_text_fmt = truncate_text(
-                node.node.get_content(metadata_mode=MetadataMode.NONE).strip(),
+                node.node.get_content(metadata_mode=MetadataMode.ALL).strip(),
                 max_length=5000,
             )
             documents.append(source_text_fmt)
@@ -76,6 +78,5 @@ if __name__ == "__main__":
     # dense.construct_index(docs_dir="./docs")
     query = "Who is the author of 'A Christmas Carol'?"
     documents, scores = dense.retrieve(query, with_score=True)
-
     for document, score in zip(documents, scores):
         print(f"Content: {document}\nScore: {score}\n")
