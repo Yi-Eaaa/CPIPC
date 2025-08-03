@@ -9,3 +9,7 @@ src/rag/__pycache__/*
 src/retriever/__pycache__/*
 
 test
+text2triple_model/*
+datasets
+
+logs
