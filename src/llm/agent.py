@@ -1,5 +1,5 @@
 from config.config import GLOABLE_CONFIG
-from openai import OpenAI
+from openai import OpenAI, AsyncOpenAI
 from rag.utils import safe_unicode_decode
 
 from llm.context_manager import ContextManager
@@ -18,6 +18,9 @@ class Agent:
         Create a new session with the specified name and token limit.
         """
         self.context_manager.create_session(session_name, token_limit)
+
+    async def async_chat(self):
+        pass
 
     def chat(
         self,

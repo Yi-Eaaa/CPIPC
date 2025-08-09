@@ -1,6 +1,5 @@
 PROMPTS = {}
 
-
 PROMPTS[
     "RAG_PROMPT"
 ] = """---Role---
@@ -20,9 +19,9 @@ Generate a concise response that summarizes relevant points from the provided in
 - Target format and length: JSON format.
   The JSON should have two keys:
 
-    "Answer" for your answer based on the provided information.
+   "Answer" for your answer based on the provided information.
 
-    "Ifsufficient" for Whether the provided information is sufficient to answer the question(Format: [SUFFICIENT/INSUFFICIENT]).
+   "Ifsufficient" for Whether the provided information is sufficient to answer the question(Format: [SUFFICIENT/INSUFFICIENT]).
 
 - Aim to keep content under 3 paragraphs for conciseness
 
@@ -31,6 +30,33 @@ Generate a concise response that summarizes relevant points from the provided in
 - Use clear and descriptive section titles that reflect the content
 
 - If the provided information is insufficient to answer the question, clearly state that you don't know or cannot provide an answer in the same language as the user's question."""
+
+
+# PROMPTS[
+#     "RAG_PROMPT"
+# ] = """---Role---
+
+# You are a professional assistant responsible for answering questions based on and textual information. Please respond in the same language as the user's question.
+
+# ---Goal---
+
+# Carefully read the provided information, which may or may not be relevant to the question. Identify and summarize only the parts that are directly useful for answering the question.
+
+# If there are multiple pieces of information that conflict or are time-sensitive, prefer the more recent one based on explicit timestamps or contextual clues. Clearly indicate which information was chosen and why, if necessary.
+
+# ---Provided Information---
+
+# {documents}
+
+# ---Response Requirements---
+
+# - Target format and length: JSON format.
+#   The JSON should ONLY have one key:
+
+#     "Answer": Your answer based on the provided information. (Text in one paragraph)
+
+# - Use clear and descriptive section titles that reflect the content
+# """
 
 
 PROMPTS[

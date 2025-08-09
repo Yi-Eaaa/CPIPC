@@ -24,7 +24,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mode",
         choices=["test", "console", "API"],
-        default="console",
+        default="test",
         help="Mode to run the application: 'test', 'console', or 'API'",
     )
     args = parser.parse_args()
@@ -33,8 +33,8 @@ if __name__ == "__main__":
     if args.mode == "test":
         # input_text = "The capital of France is Paris."
         # input_text = "The founding time of hospitals?"
-        # input_text = "how many 3-point attempts did steve nash average per game in seasons he made the 50-40-90 club?"
-        input_text = "In which country did Tesla build a new Gigafactory in 2021?"
+        input_text = "how many 3-point attempts did steve nash average per game in seasons he made the 50-40-90 club?"
+        # input_text = "In which country did Tesla build a new Gigafactory in 2021?"
         extracted_entities = text2entities.extract_entities(input_text)
         print(f"Input Text: {input_text}")
         print(f"Extracted Entities: {extracted_entities}")

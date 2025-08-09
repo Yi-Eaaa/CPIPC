@@ -1,4 +1,8 @@
+import json
 import re
+import time
+
+import requests
 
 
 def safe_unicode_decode(content):
@@ -27,3 +31,103 @@ def clean_json_text(text: str) -> str:
         text = text[:-3].strip()
     return text
 
+
+
+def html2md(html_content: str, max_retry=4) -> str:
+    """
+    Convert HTML content to Markdown format using a remote service.
+
+    Args:
+        html_content (str): Raw HTML.
+
+    Returns:
+        str: Markdown content extracted from the HTML.
+    """
+
+    
+    # Patterns
+    SCRIPT_PATTERN = r"<[ ]*script.*?\/[ ]*script[ ]*>"
+    STYLE_PATTERN = r"<[ ]*style.*?\/[ ]*style[ ]*>"
+    META_PATTERN = r"<[ ]*meta.*?>"
+    COMMENT_PATTERN = r"<[ ]*!--.*?--[ ]*>"
+    LINK_PATTERN = r"<[ ]*link.*?>"
+    BASE64_IMG_PATTERN = r'<img[^>]+src="data:image/[^;]+;base64,[^"]+"[^>]*>'
+    SVG_PATTERN = r"(<svg[^>]*>)(.*?)(<\/svg>)"
+
+
+    def replace_svg(html: str, new_content: str = "this is a placeholder") -> str:
+        return re.sub(
+            SVG_PATTERN,
+            lambda match: f"{match.group(1)}{new_content}{match.group(3)}",
+            html,
+            flags=re.DOTALL,
+        )
+
+
+    def replace_base64_images(html: str, new_image_src: str = "#") -> str:
+        return re.sub(BASE64_IMG_PATTERN, f'<img src="{new_image_src}"/>', html)
+
+
+    def clean_html(html: str, clean_svg: bool = False, clean_base64: bool = False):
+        html = re.sub(
+            SCRIPT_PATTERN, "", html, flags=re.IGNORECASE | re.MULTILINE | re.DOTALL
+        )
+        html = re.sub(
+            STYLE_PATTERN, "", html, flags=re.IGNORECASE | re.MULTILINE | re.DOTALL
+        )
+        html = re.sub(
+            META_PATTERN, "", html, flags=re.IGNORECASE | re.MULTILINE | re.DOTALL
+        )
+        html = re.sub(
+            COMMENT_PATTERN, "", html, flags=re.IGNORECASE | re.MULTILINE | re.DOTALL
+        )
+        html = re.sub(
+            LINK_PATTERN, "", html, flags=re.IGNORECASE | re.MULTILINE | re.DOTALL
+        )
+
+        if clean_svg:
+            html = replace_svg(html)
+        if clean_base64:
+            html = replace_base64_images(html)
+        return html
+
+    headers = {
+        # "Accept": "application/json",
+        "Content-Type": "application/json",
+        "X-Engine": "browser",
+        "X-Md-Heading-Style": "setext",
+        "X-Retain-Images": "none",
+        "X-Return-Format": "markdown",
+        "X-With-Images-Summary": "true",
+        "X-With-Links-Summary": "true"
+    }
+    cl_html = clean_html(html_content, clean_svg=True, clean_base64=True)
+    data = {"url": "https://example.com", "html": cl_html}
+
+    retry = 0
+    sleep_time = 5
+
+    while retry<max_retry:
+        response = requests.post(
+            url="https://r.jina.ai/",
+            headers=headers,
+            data=json.dumps(data),
+        )
+
+        retry += 1
+        if response.status_code != 200:
+            print(f"Failed to convert HTML to Markdown: {response.status_code}. Retry[{retry}/{max_retry}]")
+        else:
+            break
+        
+        time.sleep(sleep_time)  # Sleep to avoid rate limiting
+        sleep_time *= 2
+
+    return response.text
+
+if __name__ == "__main__":
+    # Example usage
+    with open("/home/hongyi/CPIPC/datasets/crag-retrieval-summarization/first_20_data/html/data0/page0.html", "r", encoding="utf-8") as file:
+        html_content = file.read()
+    markdown_content = html2md(html_content)
+    print(markdown_content)

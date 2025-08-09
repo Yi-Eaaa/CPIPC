@@ -68,7 +68,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mode",
         choices=["test", "console", "API"],
-        default="console",
+        default="test",
         help="Mode to run the application: 'test', 'console', or 'API'",
     )
     args = parser.parse_args()
@@ -78,9 +78,10 @@ if __name__ == "__main__":
     text2triple = Text2Triple(model_path)
 
     if args.mode == "test":
-        input_text = "The capital of France is Paris."
+        # input_text = "The capital of France is Paris."
         # input_text = "The founding time of hospitals?"
-        # input_text = "how many 3-point attempts did steve nash average per game in seasons he made the 50-40-90 club?"
+        input_text = "how many 3-point attempts did steve nash average per game in seasons he made the 50-40-90 club?"
+        input_text = "what company in the dow jones is the best performer today?"
         generated_triple = text2triple.generate_triple(input_text)
         print(f"Input Text: {input_text}")
         print(f"Generated Triple: {generated_triple}")

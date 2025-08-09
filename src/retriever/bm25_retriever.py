@@ -2,44 +2,77 @@ import os
 import shutil
 
 from llama_index.core import SimpleDirectoryReader
-from llama_index.core.node_parser import SentenceSplitter
+from llama_index.core.node_parser import SentenceSplitter, MarkdownElementNodeParser, UnstructuredElementNodeParser
 from llama_index.core.schema import MetadataMode
 from llama_index.core.utils import truncate_text
 from llama_index.retrievers.bm25 import BM25Retriever as BM25
+from llama_index.core import Settings
+from llama_index.embeddings.ollama import OllamaEmbedding
+from llama_index.embeddings.openai import OpenAIEmbedding
+from llama_index.llms.siliconflow import SiliconFlow
+from config.config import GLOABLE_CONFIG
+import pickle
 
+Settings.embed_model = OllamaEmbedding(
+    model_name=GLOABLE_CONFIG["embedding_model"],
+)
+
+Settings.llm = SiliconFlow(
+    # model=GLOABLE_CONFIG["chat_model"],
+    model="deepseek-ai/DeepSeek-V3",
+    api_key=GLOABLE_CONFIG["chat_api_key"],
+    extra_body={"enable_thinking": False},
+)
+# print(Settings.llm.complete("Introduce yourself."))
 
 class BM25Retriever:
     def __init__(
         self,
         chunk_size=512,
     ):
-        self.text_splitter = SentenceSplitter(chunk_size=chunk_size)
+        # self.text_splitter = SentenceSplitter(chunk_size=chunk_size)
+        self.node_parser = MarkdownElementNodeParser(num_workers=1)
+        # self.text_splitter = UnstructuredElementNodeParser()
         self.retriever = None
+        self.base_dir = "./bm25_persist"
 
-    def construct_index(self, docs_dir="./docs", persist_dir="./bm25_persist", k=4):
+    def construct_index(self, docs_dir="./docs", index_name="test", k=4):
         """
         Create a new BM25 retriever and add documents to the index.
         """
         documents = SimpleDirectoryReader(docs_dir).load_data()
-        nodes = self.text_splitter.get_nodes_from_documents(
+        nodes = self.node_parser.get_nodes_from_documents(
             documents, show_progress=True
         )
+
+        # nodes_path = os.path.join(self.base_dir, f"{index_name}")
+        nodes_path = self.base_dir
+        os.makedirs(nodes_path, exist_ok=True)
+        nodes_file = f"nodes_{index_name}.pkl"
+        pickle.dump(nodes, open(os.path.join(nodes_path, nodes_file), "wb"))
 
         self.retriever = BM25.from_defaults(
             nodes=nodes,
             similarity_top_k=k,
             language="english",
         )
-        self.persist(persist_dir)
+        self.persist(index_name)
 
-    def existed_index(self, persist_dir="./bm25_persist"):
+    def existed_index(self, index_name="test"):
+        persist_dir = os.path.join(self.base_dir, index_name)
         self.retriever = BM25.from_persist_dir(persist_dir)
+        # nodes = self.retriever.corpus
+        # table = []
+        # for node in nodes:
+        #     if 'table_df' in node.keys():
+        #         table.append({'table': node['table_df'], 'summary': node['table_summary']})
+        # pass
 
-    def persist(self, persist_dir="./bm25_persist"):
+    def persist(self, index_name="test"):
         """
         Persist the BM25 index to the specified directory.
         """
-        assert persist_dir, "Persist directory must be specified."
+        persist_dir = os.path.join(self.base_dir, index_name)
         if os.path.exists(persist_dir):
             print(f"Persist directory {persist_dir} already exists. Removing it.")
             shutil.rmtree(persist_dir)
@@ -51,21 +84,20 @@ class BM25Retriever:
         self.retriever.persist(persist_dir)
         # print(f"BM25 index saved to {persist_dir} successfully.")
 
-    def retrieve(self, query, top_k=4, with_score=False):
+    def retrieve(self, query, with_score=False, index_name="test", k=4):
         """
         Retrieve the top-k documents for the given query using BM25.
         """
-        if self.retriever is None:
-            self.existed_index()
-
-        self.retriever.similarity_top_k = top_k
-
+        # if self.retriever is None:
+        #     self.existed_index()
+        self.existed_index(index_name)
+        self.retriever.similarity_top_k = k
         results = self.retriever.retrieve(query)
         documents = []
         scores = []
         for node in results:
             source_text_fmt = truncate_text(
-                node.node.get_content(metadata_mode=MetadataMode.NONE).strip(),
+                node.node.get_content(metadata_mode=MetadataMode.ALL).strip(),
                 max_length=5000,
             )
             documents.append(source_text_fmt)
@@ -80,9 +112,27 @@ class BM25Retriever:
 if __name__ == "__main__":
     bm25 = BM25Retriever()
 
-    bm25.construct_index("./docs")
-    # bm25.existed_index("./bm25_persist")
-    query = "Who is the author of 'A Christmas Carol'?"
-    documents, scores = bm25.retrieve(query, top_k=6, with_score=True)
-    for document, score in zip(documents, scores):
-        print(f"Content: {document}\nScore: {score}\n")
+    # # bm25.construct_index("./docs")
+    # # query = "Who is the author of 'A Christmas Carol'?"
+    # # documents, scores = bm25.retrieve(query, with_score=True)
+    # # for document, score in zip(documents, scores):
+    # #     print(f"Content: {document}\nScore: {score}\n")
+
+    # bm25.construct_index("./datasets/crag-retrieval-summarization/first_20_data/markdown/data0", index_name="crag_data0")
+    # # bm25.existed_index(index_name="crag_data0")
+    # query = "In which seasons did Steve Nash achieve the 50-40-90 club?"
+    # documents, scores = bm25.retrieve(query, with_score=True, index_name="crag_data0")
+    # for document, score in zip(documents, scores):
+    #     print(f"Content: {document}\nScore: {score}\n")
+
+    
+    # bm25.construct_index("./datasets/crag-retrieval-summarization/first_20_data/markdown/data1", index_name="crag_data1")
+    # query = "Are there any movies that feature a person who creates and controls a device?"
+    # documents, scores = bm25.retrieve(query, with_score=True, index_name="crag_data1")
+    # for document, score in zip(documents, scores):
+    #     print(f"Content: {document}\nScore: {score}\n")
+
+    i = 2
+    while i < 20:
+        bm25.construct_index(f"./datasets/crag-retrieval-summarization/first_20_data/markdown/data{i}", index_name=f"crag_data{i}")
+        i += 1

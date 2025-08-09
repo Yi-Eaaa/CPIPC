@@ -52,7 +52,7 @@ def rerank(
         return rank
 
 
-def hybrid_response(query, vector_docs, bm25_docs):
+def hybrid_response(query, vector_docs, bm25_docs, k=4, temperature=0.3):
     """
     Combine vector search and BM25 search results to generate a hybrid response.
 
@@ -65,7 +65,7 @@ def hybrid_response(query, vector_docs, bm25_docs):
         str: A combined response from both search methods.
     """
     total_docs = vector_docs + bm25_docs
-    rerank_idx = rerank(query, total_docs)
+    rerank_idx = rerank(query, total_docs, top_n=k)
     provided_info = "#############################\n"
     for id, idx in enumerate(rerank_idx, start=1):
         provided_info += (
@@ -79,6 +79,7 @@ def hybrid_response(query, vector_docs, bm25_docs):
         prompt=query,
         system_prompt=system_prompt,
         extra_body={"enable_thinking": False},
+        temperature=temperature
     )
 
     response = clean_json_text(response)
@@ -99,21 +100,53 @@ def hybrid_response(query, vector_docs, bm25_docs):
         raise ValueError(
             f"Invalid response '{ifsufficient}' from LLM for 'Ifsufficient'."
         )
+    return answer
 
 
 if __name__ == "__main__":
-    query = "Who is the author of 'A Christmas Carol'?"
     from src.retriever.dense_retriever import DenseRetriever
-
-    vector = DenseRetriever()
-    vector_docs = vector.retrieve(query)
-
     from src.retriever.bm25_retriever import BM25Retriever
 
     bm25 = BM25Retriever()
-    bm25_docs = bm25.retrieve(query)
+    vector = DenseRetriever()
 
-    answer = hybrid_response(query, vector_docs, bm25_docs)
+    # test
+    # query = "Who is the author of 'A Christmas Carol'?"
+
+    # data0
+    # query = "How many 3-point attempts did Steve Nash average per game in seasons he made the 50-40-90 club?"
+    # query = "What is 3-point attempt?"
+    # query = "In which seasons did Steve Nash achieve the 50-40-90 club?"
+    # query = "What was Steve Nash's per game 3PA(3-point field goal attempts) in season 2005-06?"
+    # query = "What was Steve Nash's per game 3PA(3-point field goal attempts) in season 2007-08?"
+    # query = "What was Steve Nash's per game 3PA(3-point field goal attempts) in season 2008-09?"
+    # query = "What was Steve Nash's per game 3PA(3-point field goal attempts) in season 2009-10?"
+
+    # data1
+    # query = "Are there any movies that feature a person who creates and controls a device?"
+    # query = "what is a movie to feature a person who can create and control a device that can manipulate the laws of physics?"
+
+    # data7
+    # query = "what is the average gross for the top 3 pixar movies?"
+    query = "What are the top 3 Pixar movies by gross revenue in 2024?"
+
+    # data6
+    # query = "on which date did sgml distribute dividends the first time"
+    # query = "What is SGML?"
+    # query = "When did Sigma Lithium Corporation Common Shares (SGML) distribute dividends for the first time?"
+    
+    # data2
+    # query = "where did the ceo of salesforce previously work?"
+
+
+    data = "crag_data7"
+    topk = 15
+
+    vector_docs = vector.retrieve(query, collection_name=data, k=topk)
+    bm25_docs = bm25.retrieve(query, index_name=data, k=topk)
+
+
+    answer = hybrid_response(query, vector_docs, bm25_docs, k=topk, temperature=0)
     print(
         f"#############################\nQuery:\n{query}\n#############################\nAnswer:\n{answer}\n#############################"
     )
