@@ -1,17 +1,21 @@
 import os
+import pickle
 import shutil
 
-from llama_index.core import SimpleDirectoryReader
-from llama_index.core.node_parser import SentenceSplitter, MarkdownElementNodeParser, UnstructuredElementNodeParser
+from llama_index.core import Settings, SimpleDirectoryReader
+from llama_index.core.node_parser import (
+    MarkdownElementNodeParser,
+    SentenceSplitter,
+    UnstructuredElementNodeParser,
+)
 from llama_index.core.schema import MetadataMode
 from llama_index.core.utils import truncate_text
-from llama_index.retrievers.bm25 import BM25Retriever as BM25
-from llama_index.core import Settings
 from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.siliconflow import SiliconFlow
+from llama_index.retrievers.bm25 import BM25Retriever as BM25
+
 from config.config import GLOABLE_CONFIG
-import pickle
 
 Settings.embed_model = OllamaEmbedding(
     model_name=GLOABLE_CONFIG["embedding_model"],
@@ -24,6 +28,7 @@ Settings.llm = SiliconFlow(
     extra_body={"enable_thinking": False},
 )
 # print(Settings.llm.complete("Introduce yourself."))
+
 
 class BM25Retriever:
     def __init__(
@@ -41,9 +46,7 @@ class BM25Retriever:
         Create a new BM25 retriever and add documents to the index.
         """
         documents = SimpleDirectoryReader(docs_dir).load_data()
-        nodes = self.node_parser.get_nodes_from_documents(
-            documents, show_progress=True
-        )
+        nodes = self.node_parser.get_nodes_from_documents(documents, show_progress=True)
 
         # nodes_path = os.path.join(self.base_dir, f"{index_name}")
         nodes_path = self.base_dir
@@ -125,14 +128,16 @@ if __name__ == "__main__":
     # for document, score in zip(documents, scores):
     #     print(f"Content: {document}\nScore: {score}\n")
 
-    
     # bm25.construct_index("./datasets/crag-retrieval-summarization/first_20_data/markdown/data1", index_name="crag_data1")
     # query = "Are there any movies that feature a person who creates and controls a device?"
     # documents, scores = bm25.retrieve(query, with_score=True, index_name="crag_data1")
     # for document, score in zip(documents, scores):
     #     print(f"Content: {document}\nScore: {score}\n")
 
-    i = 2
+    i = 0
     while i < 20:
-        bm25.construct_index(f"./datasets/crag-retrieval-summarization/first_20_data/markdown/data{i}", index_name=f"crag_data{i}")
+        bm25.construct_index(
+            f"./datasets/crag-retrieval-summarization/first_20_data/markdown/data{i}",
+            index_name=f"crag_data{i}",
+        )
         i += 1

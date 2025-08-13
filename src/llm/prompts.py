@@ -53,9 +53,8 @@ Generate a concise response that summarizes relevant points from the provided in
 # - Target format and length: JSON format.
 #   The JSON should ONLY have one key:
 
-#     "Answer": Your answer based on the provided information. (Text in one paragraph)
+#     "Answer": Your answer based on the provided information. (Text in one paragraph. Concise and brief.)
 
-# - Use clear and descriptive section titles that reflect the content
 # """
 
 

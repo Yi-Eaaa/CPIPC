@@ -1,8 +1,8 @@
 import json
 
 import requests
-from config.config import GLOABLE_CONFIG
 
+from config.config import GLOABLE_CONFIG
 from llm.agent import Agent
 from llm.prompts import PROMPTS
 from rag.utils import clean_json_text
@@ -21,7 +21,7 @@ def rerank(
     overlap_tokens=128,
     with_score=False,
 ):
-    url = GLOABLE_CONFIG["rerank_base_url"]
+    url = GLOABLE_CONFIG["rerank_url"]
 
     payload = {
         "model": model,
@@ -79,19 +79,19 @@ def hybrid_response(query, vector_docs, bm25_docs, k=4, temperature=0.3):
         prompt=query,
         system_prompt=system_prompt,
         extra_body={"enable_thinking": False},
-        temperature=temperature
+        temperature=temperature,
     )
 
     response = clean_json_text(response)
-    
+
     try:
         response_json = json.loads(response)
     except json.JSONDecodeError as e:
         raise ValueError(f"JSON parsing error: {e} {response}.")
 
     answer = response_json["Answer"]
-    ifsufficient = response_json["Ifsufficient"]
 
+    ifsufficient = response_json["Ifsufficient"]
     if ifsufficient == "SUFFICIENT":
         return answer
     elif ifsufficient == "INSUFFICIENT":
@@ -104,8 +104,8 @@ def hybrid_response(query, vector_docs, bm25_docs, k=4, temperature=0.3):
 
 
 if __name__ == "__main__":
-    from src.retriever.dense_retriever import DenseRetriever
     from src.retriever.bm25_retriever import BM25Retriever
+    from src.retriever.dense_retriever import DenseRetriever
 
     bm25 = BM25Retriever()
     vector = DenseRetriever()
@@ -121,32 +121,64 @@ if __name__ == "__main__":
     # query = "What was Steve Nash's per game 3PA(3-point field goal attempts) in season 2007-08?"
     # query = "What was Steve Nash's per game 3PA(3-point field goal attempts) in season 2008-09?"
     # query = "What was Steve Nash's per game 3PA(3-point field goal attempts) in season 2009-10?"
+    # query = "What is the average 3-point attempts(3PA) per game of Steve Nash around season 2005-06, 2007-08, 2008-09, 2009-10?"
 
     # data1
     # query = "Are there any movies that feature a person who creates and controls a device?"
     # query = "what is a movie to feature a person who can create and control a device that can manipulate the laws of physics?"
 
-    # data7
-    # query = "what is the average gross for the top 3 pixar movies?"
-    query = "What are the top 3 Pixar movies by gross revenue in 2024?"
+    # data2
+    # query = "where did the ceo of salesforce previously work?"
+    # query = "who is the ceo of salesforce?"
+    # query = "where did Marc Benioff previously work"
+
+    # data3
+    # query = "which movie won the oscar best visual effects in 2021?"
+
+    # data4
+    # query = "what company in the dow jones is the best performer today?"
+
+    # data5
+    query = "in 2004, which animated film was recognized with the best animated feature film oscar?"
 
     # data6
     # query = "on which date did sgml distribute dividends the first time"
-    # query = "What is SGML?"
+    # query = "What is SGML from the provided infomation?"
     # query = "When did Sigma Lithium Corporation Common Shares (SGML) distribute dividends for the first time?"
-    
-    # data2
-    # query = "where did the ceo of salesforce previously work?"
 
+    # data7
+    # query = "what is the average gross for the top 3 pixar movies?"
+    # query = "What are the top 3 Pixar movies by gross revenue in 2024?"
 
-    data = "crag_data7"
-    topk = 15
+    # data8
+    # query = "what are the countries that are located in southern africa."
+
+    # data9
+    # query = "which company in the s&p 500 index has the highest percentage of green energy usage?"
+    # query = "which company has the highest percentage of green energy usage?"
+
+    # data10
+    # query = "what's the cooling source of the koeberg nuclear power station?"
+
+    # data11
+    # query = "when did hamburg become the biggest city of germany?"
+
+    # data12
+    # query = "how much did voyager therapeutics's stock rise in value over the past month?"
+    query = (
+        "how much did voyager therapeutics's stock change in value over the past month?"
+    )
+
+    # data13
+    # query = ""
+
+    data = "crag_data12"
+    topk = 6
 
     vector_docs = vector.retrieve(query, collection_name=data, k=topk)
     bm25_docs = bm25.retrieve(query, index_name=data, k=topk)
 
-
-    answer = hybrid_response(query, vector_docs, bm25_docs, k=topk, temperature=0)
+    answer = hybrid_response(query, vector_docs, bm25_docs, k=topk, temperature=0.6)
     print(
         f"#############################\nQuery:\n{query}\n#############################\nAnswer:\n{answer}\n#############################"
     )

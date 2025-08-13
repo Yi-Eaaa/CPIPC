@@ -1,3 +1,6 @@
+import os
+import pickle
+
 import chromadb
 from llama_index.core import (
     Settings,
@@ -5,14 +8,12 @@ from llama_index.core import (
     StorageContext,
     VectorStoreIndex,
 )
-from llama_index.core.node_parser import SentenceSplitter, MarkdownElementNodeParser
+from llama_index.core.node_parser import MarkdownElementNodeParser, SentenceSplitter
 from llama_index.core.schema import MetadataMode
 from llama_index.core.utils import truncate_text
 from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.llms.siliconflow import SiliconFlow
 from llama_index.vector_stores.chroma import ChromaVectorStore
-import os
-import pickle
 
 from config.config import GLOABLE_CONFIG
 
@@ -44,11 +45,11 @@ class DenseRetriever:
         self.node_parser = MarkdownElementNodeParser()
 
     def construct_index(self, docs_dir="./docs", collection_name="default"):
-        documents = SimpleDirectoryReader(docs_dir).load_data()
         nodes_file = f"./bm25_persist/nodes_{collection_name}.pkl"
         if os.path.exists(nodes_file):
             nodes = pickle.load(open(nodes_file, "rb"))
         else:
+            documents = SimpleDirectoryReader(docs_dir).load_data()
             nodes = self.node_parser.get_nodes_from_documents(documents)
         if collection_name in self.chroma_client.list_collections():
             self.chroma_client.delete_collection(name=collection_name)
@@ -91,7 +92,7 @@ class DenseRetriever:
             return documents, scores
         else:
             return documents
-        
+
     def query(self, query, k=4, collection_name="default"):
         """
         Query the index with a given query string.
@@ -99,12 +100,9 @@ class DenseRetriever:
         nodes_file = f"./bm25_persist/nodes_{collection_name}.pkl"
         nodes = pickle.load(open(nodes_file, "rb"))
         base_nodes, objects = self.node_parser.get_nodes_and_objects(nodes)
-        vector_index = VectorStoreIndex(nodes=base_nodes+objects)
-        
-        query_engine = vector_index.as_query_engine(
-            similarity_top_k=k,
-            verbose=True
-        )
+        vector_index = VectorStoreIndex(nodes=base_nodes + objects)
+
+        query_engine = vector_index.as_query_engine(similarity_top_k=k, verbose=True)
         result = query_engine.query(query)
         return result
 
@@ -131,7 +129,10 @@ if __name__ == "__main__":
     # for document, score in zip(documents, scores):
     #     print(f"Content: {document}\nScore: {score}\n")
 
-    i = 2
+    i = 0
     while i < 20:
-        dense.construct_index(f"./datasets/crag-retrieval-summarization/first_20_data/markdown/data{i}", collection_name=f"crag_data{i}")
+        dense.construct_index(
+            f"./datasets/crag-retrieval-summarization/first_20_data/markdown/data{i}",
+            collection_name=f"crag_data{i}",
+        )
         i += 1

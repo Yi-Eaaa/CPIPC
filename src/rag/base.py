@@ -1,5 +1,7 @@
-from typing import List, Dict, Literal
+from typing import Dict, List, Literal
+
 from pydantic import BaseModel
+
 
 class RAGState(BaseModel):
     query: str

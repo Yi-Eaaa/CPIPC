@@ -1,20 +1,21 @@
 import os
 import sys
 import uuid
-from typing import List, Dict, Literal
+from typing import Dict, List, Literal
 
-from pydantic import BaseModel
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 from langgraph.types import Command
-from langgraph.checkpoint.memory import MemorySaver
+from pydantic import BaseModel
 
-from src.llm.agent import Agent
 from src.config.config import GLOABLE_CONFIG
+from src.llm.agent import Agent
 from src.llm.operate import hybrid_response
-from src.retriever.dense_retriever import DenseRetriever
-from src.retriever.bm25_retriever import BM25Retriever
-from src.rag.logger import Logger
 from src.rag.base import RAGState
+from src.rag.logger import Logger
+from src.retriever.bm25_retriever import BM25Retriever
+from src.retriever.dense_retriever import DenseRetriever
+
 
 class MiniRAG:
     def __init__(self):
@@ -41,16 +42,17 @@ class MiniRAG:
         graph.add_node("exit", self.exit_node)
 
         graph.set_entry_point("check")
-        graph.add_conditional_edges("check", self.check_route, {
-            "planner": "planner",
-            "combine": "combine"
-        })
+        graph.add_conditional_edges(
+            "check", self.check_route, {"planner": "planner", "combine": "combine"}
+        )
         graph.add_edge("planner", "combine")
         graph.add_edge("exit", END)
         return graph
 
     def check_node(self, state: RAGState) -> RAGState:
-        self.logger.info(f"🔍 Checking query: {state.query} (depth {state.current_depth})")
+        self.logger.info(
+            f"🔍 Checking query: {state.query} (depth {state.current_depth})"
+        )
         vector_docs = self.retriever_vector.retrieve(state.query, k=1)
         bm25_docs = self.retriever_bm25.retrieve(state.query, k=1)
         answer = hybrid_response(state.query, vector_docs, bm25_docs)
@@ -68,17 +70,30 @@ class MiniRAG:
         return state
 
     def check_route(self, state: RAGState) -> str:
-        self.logger.info(f"🚦 Routing decision: {state.query} -> {state.route_decision}")
+        self.logger.info(
+            f"🚦 Routing decision: {state.query} -> {state.route_decision}"
+        )
         return state.route_decision
 
     def planner_node(self, state: RAGState) -> RAGState:
-        self.logger.info(f"🧩 Planning subquestions for: {state.query} (depth {state.current_depth})")
+        self.logger.info(
+            f"🧩 Planning subquestions for: {state.query} (depth {state.current_depth})"
+        )
 
         prompt = (
-            f"User suggestion: {state.human_suggestion}\n\n" if state.human_suggestion else ""
-        ) + f"Please decompose the following complex question into simpler, answerable subquestions:\n{state.query}"
+            (
+                f"User suggestion: {state.human_suggestion}\n\n"
+                if state.human_suggestion
+                else ""
+            )
+            + f"Please decompose the following complex question into simpler, answerable subquestions:\n{state.query}"
+        )
 
-        subqs = [q.strip() for q in self.llm.chat(self.model, prompt).split("\n") if q.strip()]
+        subqs = [
+            q.strip()
+            for q in self.llm.chat(self.model, prompt).split("\n")
+            if q.strip()
+        ]
         state.subquestions = subqs
         self.logger.info(f"📌 Subquestions generated: {subqs}")
 
@@ -88,7 +103,7 @@ class MiniRAG:
                 sub_state = RAGState(
                     query=subq,
                     answers=state.answers,
-                    current_depth=state.current_depth + 1
+                    current_depth=state.current_depth + 1,
                 )
                 config = {"configurable": {"thread_id": uuid.uuid4()}}
                 result = self.app.invoke(sub_state, config=config)
@@ -101,7 +116,9 @@ class MiniRAG:
         return state
 
     def _combine_answers(self, state: RAGState) -> str:
-        all_sub_answers = "\n".join(f"{k}: {v}" for k, v in state.answers.items() if k != state.query)
+        all_sub_answers = "\n".join(
+            f"{k}: {v}" for k, v in state.answers.items() if k != state.query
+        )
         if not all_sub_answers:
             self.logger.warning("❗ No subanswers found to combine.")
             return ""
@@ -140,7 +157,7 @@ class MiniRAG:
             "route_decision": "",
             "user_decision": "",
             "retry_times": state.retry_times + 1,
-            "human_suggestion": suggestion
+            "human_suggestion": suggestion,
         }
 
     def run(self, query: str):

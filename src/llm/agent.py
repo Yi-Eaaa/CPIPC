@@ -1,8 +1,8 @@
-from config.config import GLOABLE_CONFIG
-from openai import OpenAI, AsyncOpenAI
-from rag.utils import safe_unicode_decode
+from openai import AsyncOpenAI, OpenAI
 
+from config.config import GLOABLE_CONFIG
 from llm.context_manager import ContextManager
+from rag.utils import safe_unicode_decode
 
 
 class Agent:
@@ -19,8 +19,54 @@ class Agent:
         """
         self.context_manager.create_session(session_name, token_limit)
 
-    async def async_chat(self):
-        pass
+    async def async_chat(
+        self,
+        prompt: str,
+        model: str = GLOABLE_CONFIG["chat_model"],
+        system_prompt: str = None,
+        stream: bool = False,
+        max_tokens: int = 8192,
+        temperature=0.3,
+        top_p=0.7,
+        multi_turn: bool = False,
+        session_name="default",
+        **kwargs
+    ):
+        openai_async_client = AsyncOpenAI(base_url=self.base_url, api_key=self.api_key)
+        messages = []
+
+        if multi_turn:
+            history = self.context_manager.get_context(session_name)
+            if len(history) != 0:
+                messages.extend(history)
+
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+
+        user_context = {"role": "user", "content": prompt}
+        messages.append(user_context)
+
+        response = await openai_async_client.chat.completions.create(
+            model=model,
+            messages=messages,
+            stream=stream,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            **kwargs
+        )
+
+        content = response.choices[0].message.content
+        if r"\u" in content:
+            content = safe_unicode_decode(content.encode("utf-8"))
+
+        if multi_turn:
+            added_context = []
+            added_context.append(user_context)
+            system_context = {"role": "system", "content": content}
+            added_context.append(system_context)
+            self.context_manager.add_context(session_name, added_context)
+        return content
 
     def chat(
         self,
