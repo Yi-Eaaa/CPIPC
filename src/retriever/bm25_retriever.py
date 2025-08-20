@@ -33,26 +33,25 @@ Settings.llm = SiliconFlow(
 class BM25Retriever:
     def __init__(
         self,
-        chunk_size=512,
     ):
-        # self.text_splitter = SentenceSplitter(chunk_size=chunk_size)
         self.node_parser = MarkdownElementNodeParser(num_workers=1)
-        # self.text_splitter = UnstructuredElementNodeParser()
         self.retriever = None
         self.base_dir = "./bm25_persist"
 
-    def construct_index(self, docs_dir="./docs", index_name="test", k=4):
+    def construct_index(self, docs_dir="./docs", index_name="test", k=4, overwrite=False):
         """
         Create a new BM25 retriever and add documents to the index.
         """
-        documents = SimpleDirectoryReader(docs_dir).load_data()
-        nodes = self.node_parser.get_nodes_from_documents(documents, show_progress=True)
-
-        # nodes_path = os.path.join(self.base_dir, f"{index_name}")
         nodes_path = self.base_dir
         os.makedirs(nodes_path, exist_ok=True)
         nodes_file = f"nodes_{index_name}.pkl"
-        pickle.dump(nodes, open(os.path.join(nodes_path, nodes_file), "wb"))
+        nodes_file = os.path.join(nodes_path, nodes_file)
+        if os.path.exists(nodes_file) and not overwrite:
+            nodes = pickle.load(open(nodes_file, "rb"))
+        else:
+            documents = SimpleDirectoryReader(docs_dir).load_data()
+            nodes = self.node_parser.get_nodes_from_documents(documents, show_progress=True)
+            pickle.dump(nodes, open(nodes_file, "wb"))
 
         self.retriever = BM25.from_defaults(
             nodes=nodes,
@@ -96,20 +95,20 @@ class BM25Retriever:
         self.existed_index(index_name)
         self.retriever.similarity_top_k = k
         results = self.retriever.retrieve(query)
-        documents = []
+        documents = {}
         scores = []
         for node in results:
             source_text_fmt = truncate_text(
-                node.node.get_content(metadata_mode=MetadataMode.ALL).strip(),
+                node.node.get_content(metadata_mode=MetadataMode.NONE).strip(),
                 max_length=5000,
             )
-            documents.append(source_text_fmt)
+            documents[node.node.id_] = source_text_fmt
             scores.append(node.score)
 
         if with_score:
             return documents, scores
-        else:
-            return documents
+        
+        return documents
 
 
 if __name__ == "__main__":

@@ -38,15 +38,12 @@ class DenseRetriever:
     ) -> None:
         self.vectordb_dir = vectordb_dir
         self.chroma_client = chromadb.PersistentClient(path=vectordb_dir)
-        # self.node_parser = SentenceSplitter(
-        #     chunk_size=Settings.chunk_size, chunk_overlap=Settings.chunk_overlap
-        # )
         # self.node_parser = MarkdownElementNodeParser(chunk_size=Settings.chunk_size, chunk_overlap=Settings.chunk_overlap)
-        self.node_parser = MarkdownElementNodeParser()
+        self.node_parser = MarkdownElementNodeParser(num_workers=1)
 
-    def construct_index(self, docs_dir="./docs", collection_name="default"):
+    def construct_index(self, docs_dir="./docs", collection_name="default", overwrite=False):
         nodes_file = f"./bm25_persist/nodes_{collection_name}.pkl"
-        if os.path.exists(nodes_file):
+        if os.path.exists(nodes_file) and not overwrite:
             nodes = pickle.load(open(nodes_file, "rb"))
         else:
             documents = SimpleDirectoryReader(docs_dir).load_data()
@@ -78,20 +75,20 @@ class DenseRetriever:
 
         retriever = vector_index.as_retriever(similarity_top_k=k)
         results = retriever.retrieve(query)
-        documents = []
+        documents = {}
         scores = []
         for node in results:
             source_text_fmt = truncate_text(
                 node.node.get_content(metadata_mode=MetadataMode.NONE).strip(),
                 max_length=5000,
             )
-            documents.append(source_text_fmt)
+            documents[node.node.id_] = source_text_fmt
             scores.append(node.score)
-
+        
         if with_score:
             return documents, scores
-        else:
-            return documents
+        
+        return documents
 
     def query(self, query, k=4, collection_name="default"):
         """

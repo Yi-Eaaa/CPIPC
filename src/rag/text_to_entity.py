@@ -6,16 +6,24 @@ from flask import Flask, jsonify, request
 
 
 class Text2Entities:
-    def __init__(self):
-        self.tagger = SequenceTagger.load("flair/ner-english-ontonotes-large")
+    tagger = SequenceTagger.load("flair/ner-english-ontonotes-large")
 
-    def extract_entities(self, text: str, return_json=False):
+    def __init__(self):
+        # self.tagger = SequenceTagger.load("flair/ner-english-ontonotes-large")
+        pass
+
+    def extract_entities(self, text: str, return_json=True):
         sentence = Sentence(text)
-        self.tagger.predict(sentence)
+        Text2Entities.tagger.predict(sentence)
         entities = sentence.get_spans("ner")
-        formatted_entities = [
-            {"word": entity.text, "tag": entity.tag} for entity in entities
-        ]
+        if return_json:
+            formatted_entities = [
+                {"word": entity.text, "tag": entity.tag} for entity in entities
+            ]
+        else:
+            formatted_entities = [
+                entity.text for entity in entities
+            ]
         return formatted_entities
 
 

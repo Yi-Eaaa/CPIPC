@@ -1,37 +1,5 @@
 PROMPTS = {}
 
-PROMPTS[
-    "RAG_PROMPT"
-] = """---Role---
-
-You are a professional assistant responsible for answering questions based on and textual information. Please respond in the same language as the user's question.
-
----Goal---
-
-Generate a concise response that summarizes relevant points from the provided information. If you don't know the answer, just say so. Do not make anything up or include information where the supporting evidence is not provided.
-
----Provided Information---
-
-{documents}
-
----Response Requirements---
-
-- Target format and length: JSON format.
-  The JSON should have two keys:
-
-   "Answer" for your answer based on the provided information.
-
-   "Ifsufficient" for Whether the provided information is sufficient to answer the question(Format: [SUFFICIENT/INSUFFICIENT]).
-
-- Aim to keep content under 3 paragraphs for conciseness
-
-- Each paragraph should focus on one main point or aspect of the answer
-
-- Use clear and descriptive section titles that reflect the content
-
-- If the provided information is insufficient to answer the question, clearly state that you don't know or cannot provide an answer in the same language as the user's question."""
-
-
 # PROMPTS[
 #     "RAG_PROMPT"
 # ] = """---Role---
@@ -40,9 +8,7 @@ Generate a concise response that summarizes relevant points from the provided in
 
 # ---Goal---
 
-# Carefully read the provided information, which may or may not be relevant to the question. Identify and summarize only the parts that are directly useful for answering the question.
-
-# If there are multiple pieces of information that conflict or are time-sensitive, prefer the more recent one based on explicit timestamps or contextual clues. Clearly indicate which information was chosen and why, if necessary.
+# Generate a concise response that summarizes relevant points from the provided information. If you don't know the answer, just say so. Do not make anything up or include information where the supporting evidence is not provided.
 
 # ---Provided Information---
 
@@ -51,11 +17,45 @@ Generate a concise response that summarizes relevant points from the provided in
 # ---Response Requirements---
 
 # - Target format and length: JSON format.
-#   The JSON should ONLY have one key:
+#   The JSON should have two keys:
 
-#     "Answer": Your answer based on the provided information. (Text in one paragraph. Concise and brief.)
+#    "Answer" for your answer based on the provided information.
 
-# """
+#    "Ifsufficient" for Whether the provided information is sufficient to answer the question(Format: [SUFFICIENT/INSUFFICIENT]).
+
+# - Aim to keep content under 3 paragraphs for conciseness
+
+# - Each paragraph should focus on one main point or aspect of the answer
+
+# - Use clear and descriptive section titles that reflect the content
+
+# - If the provided information is insufficient to answer the question, clearly state that you don't know or cannot provide an answer in the same language as the user's question."""
+
+
+PROMPTS[
+    "RAG_PROMPT"
+] = """---Role---
+
+You are a professional assistant responsible for answering questions based on and textual information. Please respond in the same language as the user's question.
+
+---Goal---
+
+Carefully read the provided information, which may or may not be relevant to the question. Identify and summarize only the parts that are directly useful for answering the question.
+
+If there are multiple pieces of information that conflict or are time-sensitive, prefer the more recent one based on explicit timestamps or contextual clues. Clearly indicate which information was chosen and why, if necessary.
+
+---Provided Information---
+
+{documents}
+
+---Response Requirements---
+
+- Target format and length: JSON format.
+  The JSON should ONLY have one key:
+
+    "Answer": Your answer based on the provided information. (Text in one paragraph. Concise and brief.)
+
+"""
 
 
 PROMPTS[
@@ -228,4 +228,49 @@ Current focus:
 {current_focus}
 
 Please answer the following questions in concise language.
+"""
+
+
+PROMPTS[
+    "COMBINE_ENTITY_TRIPLE"
+] = """
+You are given a search query, along with extracted entities and triples related to it. 
+
+Your task is to rewrite the query by appending the entities and triples in a natural and fluent way, so that the enhanced query provides more semantic context for a reranker model. 
+
+Do not change the original meaning of the query. 
+
+Always integrate the entities and triples into natural language sentences. 
+
+###
+
+Examples:
+
+Input:
+Query: "how much did voyager therapeutics's stock change in value over the past month?"
+Entities: ["the past month"]
+Triples: [["Voyager Therapeutics", "Stock change", "Past month"]]
+
+Output:
+"how much did voyager therapeutics's stock change in value over the past month? 
+This query involves the company 'Voyager Therapeutics', the concept of 'stock change', and the time range 'the past month'."
+
+---
+
+Input:
+Query: "who is the ceo of tesla?"
+Entities: ["tesla"]
+Triples: [['Tesla', 'Ceo', 'Who']]
+
+Output:
+"who is the ceo of tesla? 
+This query involves the company 'Tesla' and the role 'CEO'."
+
+###
+
+Now rewrite the following query in the same style.
+
+Query: {query}
+Entities: {entities}
+Triples: {triples}
 """

@@ -159,23 +159,17 @@ def md_links_to_text(md_content: str) -> str:
 
 def process_html(html_content):
     md_content = html2md(html_content)
+    md_content = fix_table(md_content)
     clean_md_content = md_links_to_text(md_content)
     return clean_md_content
 
 
 if __name__ == "__main__":
-    # Example usage
-    # with open("/home/hongyi/CPIPC/datasets/crag-retrieval-summarization/first_20_data/html/data0/page0.html", "r", encoding="utf-8") as file:
-    #     html_content = file.read()
-    # markdown_content = html2md(html_content)
-    # print(markdown_content)
-
     with open(
-        "/home/hongyi/CPIPC/datasets/crag-retrieval-summarization/first_20_data/markdown/data0/page1.md",
+        "/home/hongyi/CPIPC/datasets/crag-retrieval-summarization/first_20_data/html/data0/page1.html",
         "r",
         encoding="utf-8",
     ) as file:
-        md_content = file.read()
-    # md_content = "[](https://twitter.com/SalesforceNews)"
-    markdown_content = md_links_to_text(md_content)
-    print(markdown_content)
+        content = file.read()
+    content = process_html(content)
+    print(content)

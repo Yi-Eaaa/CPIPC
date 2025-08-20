@@ -29,7 +29,7 @@ class AgentContext:
     def __init__(self, token_limit=200):
         self.contexts = []
         self.compressed_contexts = []
-        self.token_limit = token_limit
+        self.token_limit = 0.92 * token_limit
         self.lock = threading.Lock()
 
     def add_context(self, added_context):
