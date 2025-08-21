@@ -98,6 +98,8 @@ def hybrid_response(query, query_et, vector_docs, bm25_docs, k=4, temperature=0.
     except json.JSONDecodeError as e:
         raise ValueError(f"JSON parsing error: {e} {response}.")
 
+    print(response)
+
     answer = response_json["Answer"]
 
     if answer == "Insufficient":
@@ -301,7 +303,7 @@ def test_data(data_choice, topk=10, temperature=0.3):
 
 if __name__ == "__main__":
 
-    test_data(4)
+    test_data(0)
 
     # bm25 = BM25Retriever()
     # vector = DenseRetriever()
