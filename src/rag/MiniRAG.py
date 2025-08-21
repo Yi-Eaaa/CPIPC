@@ -1,16 +1,24 @@
-
 from typing import List, Dict, Any, Optional
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import InMemorySaver
 from src.llm.agent import Agent
 from src.llm.prompts import PROMPTS
 from src.config.config import GLOABLE_CONFIG
-from src.llm.operate import hybrid_response, extract_entity, extract_triple, query_with_et, bm25_retrieve, dense_retrieve
+from src.llm.operate import (
+    hybrid_response,
+    extract_entity,
+    extract_triple,
+    query_with_et,
+    bm25_retrieve,
+    dense_retrieve,
+)
 from logger import Logger
 from base import RAGState, QuestionNode
 import uuid
 import os
 import json
+import numpy as np
+
 
 class MiniRAG:
 
@@ -86,8 +94,8 @@ class MiniRAG:
             self.logger.info("❓ Question: %s", question)
             self.logger.info("💡 Answer: %s", answer)
             self.logger.info("-" * 50)
-    
-    def save_graph_png(self, file_name = "graph_output.png"):
+
+    def save_graph_png(self, file_name="graph_output.png"):
         with open(file_name, "wb") as f:
             f.write(self.app.get_graph().draw_mermaid_png())
             self.logger.info(f"graph mermaid png written → {file_name}")
@@ -106,13 +114,23 @@ class MiniRAG:
         triples = extract_triple(state["query"])
 
         bm25_docs = bm25_retrieve(
-            query=state["query"], entities=entities, triples=triples, docs_set=self.docs_set, topk=self.topk
+            query=state["query"],
+            entities=entities,
+            triples=triples,
+            docs_set=self.docs_set,
+            topk=self.topk,
         )
         vector_docs = dense_retrieve(
-            query=state["query"], entities=entities, triples=triples, docs_set=self.docs_set, topk=self.topk
+            query=state["query"],
+            entities=entities,
+            triples=triples,
+            docs_set=self.docs_set,
+            topk=self.topk,
         )
 
-        query_et = query_with_et(query=state["query"], entities=entities, triples=triples)
+        query_et = query_with_et(
+            query=state["query"], entities=entities, triples=triples
+        )
 
         sub_qa = "\n".join(f"{k}: {v}" for k, v in state["answers"].items())
 
@@ -121,9 +139,15 @@ class MiniRAG:
         )
 
         status, provide_info = hybrid_response(
-            state["query"], query_et, vector_docs, bm25_docs, k=self.topk, logger=self.logger, history_qa=sub_qa
+            state["query"],
+            query_et,
+            vector_docs,
+            bm25_docs,
+            k=self.topk,
+            logger=self.logger,
+            history_qa=sub_qa,
         )
-        
+
         state["node_map"][current_query]["provide_info"] = provide_info
 
         self.logger.info("❓❓❓❓queston: %s", current_query)
@@ -140,7 +164,9 @@ class MiniRAG:
             self.logger.info("⚠️⚠️⚠️⚠️route → planner (insufficient)")
             self.logger.info("⚠️⚠️⚠️⚠️knowledge gap: %s", status["gap"])
         else:
-            state["answers"][current_query] = "Insufficient information, unable to answer the current question."
+            state["answers"][
+                current_query
+            ] = "Insufficient information, unable to answer the current question."
             state["node_map"][current_query]["knowledge_gap"] = status["gap"]
             state["route_decision"] = "combine"
             self.logger.info("❗❗❗❗route → combine (max depth reached)")
@@ -163,11 +189,18 @@ class MiniRAG:
 
         sub_qa = "\n".join(f"{k}: {v}" for k, v in state["answers"].items())
 
-        system_prompt = PROMPTS["DECOMPSITION_QUERY"].format(retrieved_chunks=parent_provide_info, history_qa=sub_qa, human_suggestion=suggestion_prefix, knowledge_gap=parent_knowledge_gap)
+        system_prompt = PROMPTS["DECOMPSITION_QUERY"].format(
+            retrieved_chunks=parent_provide_info,
+            history_qa=sub_qa,
+            human_suggestion=suggestion_prefix,
+            knowledge_gap=parent_knowledge_gap,
+        )
 
         self.logger.info("plan: %s", parent["question"])
         # raw = self.agent.chat(self.model, prompt, extra_body={"enable_thinking": False})
-        raw = self.agent.chat(model=self.model, system_prompt=system_prompt, prompt=parent["question"])
+        raw = self.agent.chat(
+            model=self.model, system_prompt=system_prompt, prompt=parent["question"]
+        )
         subqs = [q.strip() for q in raw.split("\n") if q.strip()]
         self.logger.info("planned subqs=%d", len(subqs))
 
@@ -183,14 +216,14 @@ class MiniRAG:
                 "id": str(uuid.uuid4()),
                 "question": subq,
                 "answer": None,
-                "depth": parent_depth + 1,  
+                "depth": parent_depth + 1,
                 "children": [],
             }
             children.append(node)
             to_enqueue.append(subq)
             state["node_map"][subq] = node
             self.logger.info("enqueue: %s", subq)
-        
+
         if to_enqueue:
             # head insert
             state["question_queue"][0:0] = to_enqueue
@@ -225,14 +258,16 @@ class MiniRAG:
         """
         )
         self.logger.info(f"combine prompt{system_prompt}")
-        final_answer = self.agent.chat(model=self.model, system_prompt=system_prompt, prompt=root)
+        final_answer = self.agent.chat(
+            model=self.model, system_prompt=system_prompt, prompt=root
+        )
         state["answers"][root] = final_answer
         self.logger.info("final(head): %s", final_answer.replace("\n", " ")[:240])
         state["route_decision"] = "exit"
         self.logger.info(
-                "combine → exit (queue size=%d)",
-                len(state["question_queue"]),
-            )
+            "combine → exit (queue size=%d)",
+            len(state["question_queue"]),
+        )
         return state
 
     def exit_node(self, state: RAGState) -> RAGState:
@@ -262,34 +297,36 @@ class MiniRAG:
         return graph.compile(checkpointer=InMemorySaver())
 
     # ---------- Public API ----------
-    def run(
-        self,
-        init_query: str
-    ) -> RAGState:
+    def run(self, init_query: str) -> RAGState:
         state = self.create_initial_state(init_query)
         self.logger.info("thread_id: %s", self.config["configurable"]["thread_id"])
         self.logger.info("run: %s", init_query)
         result = self.app.invoke(state, config=self.config)
         self.logger.info(
-            "done: final answer length=%d", len(result["answers"].get(init_query, ""))
+            "✅✅✅✅MiniRAG answer is %s", result["answers"].get(init_query, "")
         )
         return result
 
+
 if __name__ == "__main__":
 
-    qa_path = "dataset/raw_QA.json"
+    qa_path = "datasets/crag-retrieval-summarization/raw_QA.json"
     with open(qa_path) as f:
         qa_list = json.load(f)
-    
+
     print(len(qa_list))
 
-    data_choices = [2, 3, 4]
+    data_choices = np.arange(0, 20)
+    print(data_choices)
 
     chosen_qas = [qa_list[i] for i in data_choices]
 
-    for idx, qa_pair in enumerate(chosen_qas):
+    from tqdm import tqdm
+
+    for idx, qa_pair in enumerate(tqdm(chosen_qas, desc="Processing QAs")):
         docs_set = f"crag_data{data_choices[idx]}"
         query = qa_pair["query"]
         answer = qa_pair["answer"]
         rag = MiniRAG(log_name=query, docs_set=docs_set)
         rag.run(query)
+        rag.logger.info("✅✅✅✅True Answer is: %s", answer)
