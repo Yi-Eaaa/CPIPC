@@ -102,7 +102,6 @@ class MiniRAG:
         state["query"] = current_query
         node_depth = state["node_map"][current_query].get("depth", 1)
         self.logger.info("▶️ check: %s (depth=%d)", current_query, node_depth)
-
         entities = extract_entity(state["query"])
         triples = extract_triple(state["query"])
 
@@ -222,7 +221,6 @@ class MiniRAG:
         {sub_qa}
 
         Synthesize answer strictly based on provided info for:
-
         Input Root Query:
         """
         )
@@ -230,7 +228,6 @@ class MiniRAG:
         final_answer = self.agent.chat(model=self.model, system_prompt=system_prompt, prompt=root)
         state["answers"][root] = final_answer
         self.logger.info("final(head): %s", final_answer.replace("\n", " ")[:240])
-
         state["route_decision"] = "exit"
         self.logger.info(
                 "combine → exit (queue size=%d)",
@@ -296,4 +293,3 @@ if __name__ == "__main__":
         answer = qa_pair["answer"]
         rag = MiniRAG(log_name=query, docs_set=docs_set)
         rag.run(query)
-
