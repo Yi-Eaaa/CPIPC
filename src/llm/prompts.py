@@ -32,29 +32,73 @@ PROMPTS = {}
 # - If the provided information is insufficient to answer the question, clearly state that you don't know or cannot provide an answer in the same language as the user's question."""
 
 
+# PROMPTS[
+#     "RAG_PROMPT"
+# ] = """---Role---
+
+# You are a professional assistant responsible for answering questions based on and textual information. Please respond in the same language as the user's question.
+
+# ---Goal---
+
+# Carefully read the provided information, which may or may not be relevant to the question. Identify and summarize only the parts that are directly useful for answering the question.
+
+# If there are multiple pieces of information that conflict or are time-sensitive, prefer the more recent one based on explicit timestamps or contextual clues. Clearly indicate which information was chosen and why, if necessary.
+
+# ---Provided Information---
+
+# {documents}
+
+# ---Response Requirements---
+
+# - Target format and length: JSON format.
+#   The JSON should ONLY have one key:
+
+#     "Answer": Your answer based on the provided information. (Text in one paragraph. Concise and brief.)
+
+# """
+
 PROMPTS[
     "RAG_PROMPT"
-] = """---Role---
+] = """
+---Role---
 
-You are a professional assistant responsible for answering questions based on and textual information. Please respond in the same language as the user's question.
+You are a professional knowledge-base QA assistant, responsible for answering questions based on textual information. Please respond in the same language as the user's question.
 
 ---Goal---
 
-Carefully read the provided information, which may or may not be relevant to the question. Identify and summarize only the parts that are directly useful for answering the question.
+Carefully read the provided information **and the historical Q&A pairs (if any)**.  
+Identify and summarize only the parts that are **directly useful** for answering the question.
 
-If there are multiple pieces of information that conflict or are time-sensitive, prefer the more recent one based on explicit timestamps or contextual clues. Clearly indicate which information was chosen and why, if necessary.
+If multiple pieces of information conflict or are time-sensitive, prefer the **most recent one** based on explicit timestamps or contextual clues.  
+If necessary, clearly explain which information was chosen and why.
+
+If the provided information **and** the historical Q&A pairs are insufficient to answer the question, you must analyze and specify the **current knowledge gaps** based on the available information.
 
 ---Provided Information---
 
 {documents}
 
+---Historical Q&A---
+
+{history_qa}
+
 ---Response Requirements---
 
-- Target format and length: JSON format.
-  The JSON should ONLY have one key:
+- If the question can be answered, output JSON with only one key:  
+```json
+{{
+   "Answer": "The answer based on the provided information. (Concise and brief text in one paragraph)"
+}}
+```
 
-    "Answer": Your answer based on the provided information. (Text in one paragraph. Concise and brief.)
+- If the question cannot be answered sufficiently, output JSON with two keys:
 
+```json
+{{
+   "Answer": "Insufficient",
+   "Knowledge_gap": "Concise and clear text that explicitly specifies the knowledge gap"
+}}
+```
 """
 
 
@@ -273,4 +317,55 @@ Now rewrite the following query in the same style.
 Query: {query}
 Entities: {entities}
 Triples: {triples}
+"""
+
+PROMPTS["DECOMPSITION_QUERY"] = """
+---Role---
+You are a **Question Decomposition Assistant** for a Retrieval-Augmented Generation (RAG) pipeline.
+Your task is to take a user query, historical Q&A pairs, retrieved chunks, human suggestions, and knowledge gaps,
+and decompose the query into a set of **independent, complete, and self-contained sub-questions** that will be sent to a retriever.
+
+##NOTE##: The current user query cannot be answered directly through retrieval.
+It must be decomposed into multiple sub-questions, each retrievable independently,
+and the answers to these sub-questions will later be aggregated to form the final answer.
+
+---Decomposition Rules---
+
+1. If the query is simple → keep it as a single sub-question.
+2. If the query is complex or multi-hop → decompose it into multiple sub-questions:
+
+   * Must **always** satisfy **human_suggestion** first.
+   * Must explicitly address **knowledge_gap**.
+   * Each sub-question must be **independent** (no references like "the above" or "this").
+   * Each sub-question must be **complete**, restating necessary context if needed.
+   * Cover **all entities, relations, and comparison aspects** in the original query.
+3. When decomposing, leverage:
+
+   * Historical Q&A (avoid repetition, but ensure continuity).
+   * Retrieved Chunks (consistent terminology, ensure entity coverage).
+   * Human Suggestion (highest priority).
+   * Knowledge Gap (focus on filling it).
+
+---Output Format---
+Return **strictly** as a JSON array of strings:
+
+```json
+[
+  "sub-question 1",
+  "sub-question 2"
+]
+```
+
+---Constraints---
+
+- Output only the JSON array, no explanations.
+- Do not number the sub-questions explicitly. 
+- Sub-questions must be self-contained and understandable without external context
+
+---Provided Information---
+
+- Historical Q&A: {history_qa}
+- Retrieved Chunks: {retrieved_chunks}
+- Human Suggestion(**highest priority, must be satisfied**): {human_suggestion} 
+- Knowledge Gap(**filling this gap is sufficient to answer the query**): {knowledge_gap} 
 """

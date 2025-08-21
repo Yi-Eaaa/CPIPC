@@ -57,7 +57,7 @@ def rerank(
         return rank
 
 
-def hybrid_response(query, query_et, vector_docs, bm25_docs, k=4, temperature=0.3):
+def hybrid_response(query, query_et, vector_docs, bm25_docs, k=4, temperature=0.3, history_qa = None, only_context = False, logger = None):
     """
     Combine vector search and BM25 search results to generate a hybrid response.
 
@@ -77,14 +77,18 @@ def hybrid_response(query, query_et, vector_docs, bm25_docs, k=4, temperature=0.
             f"Context {id}:\n\n{total_docs[idx]}\n#############################\n"
         )
 
-    system_prompt = PROMPTS["RAG_PROMPT"].format(documents=provided_info)
+    if only_context:
+        return provided_info
+
+    system_prompt = PROMPTS["RAG_PROMPT"].format(documents=provided_info, history_qa=history_qa)
     agent = Agent(api_key=chat_key)
     response = agent.chat(
         model=GLOABLE_CONFIG["chat_model"],
         prompt=query,
         system_prompt=system_prompt,
-        extra_body={"enable_thinking": False},
+        # extra_body={"enable_thinking": False},
         temperature=temperature,
+        logger=logger
     )
 
     response = clean_json_text(response)
@@ -96,16 +100,11 @@ def hybrid_response(query, query_et, vector_docs, bm25_docs, k=4, temperature=0.
 
     answer = response_json["Answer"]
 
-    # ifsufficient = response_json["Ifsufficient"]
-    # if ifsufficient == "SUFFICIENT":
-    #     return answer
-    # elif ifsufficient == "INSUFFICIENT":
-    #     return "INSUFFICIENT."
-    # else:
-    #     raise ValueError(
-    #         f"Invalid response '{ifsufficient}' from LLM for 'Ifsufficient'."
-    #     )
-    return answer
+    if answer == "Insufficient":
+        knowledge_gap = response_json["Knowledge_gap"]
+        return {"status": "insufficient", "gap": knowledge_gap}, provided_info
+    
+    return {"status": "sufficient", "answer": answer}, provided_info
 
 
 def query_with_et(query, entities, triples, temperature=0.3):
@@ -124,7 +123,7 @@ def query_with_et(query, entities, triples, temperature=0.3):
         model=GLOABLE_CONFIG["chat_model"],
         prompt=query,
         system_prompt=system_prompt,
-        extra_body={"enable_thinking": False},
+        # extra_body={"enable_thinking": False},
         temperature=temperature,
     )
 
@@ -292,18 +291,20 @@ def test_data(data_choice, topk=10, temperature=0.3):
 
     query_et = query_with_et(query=query, entities=entities, triples=triples)
 
-    response = hybrid_response(
+    status, provide_info = hybrid_response(
         query, query_et, vector_docs, bm25_docs, k=topk, temperature=temperature
     )
     print(
-        f"#############################\nQuery:\n{query}\n#############################\nLLM Response:\n{response}\n#############################\nAnswer:\n{answer}\n#############################"
+        f"#############################\nQuery:\n{query}\n#############################\nLLM Response:\n{status}\n#############################\nAnswer:\n{answer}\n#############################"
     )
 
 
 if __name__ == "__main__":
 
-    bm25 = BM25Retriever()
-    vector = DenseRetriever()
+    test_data(4)
+
+    # bm25 = BM25Retriever()
+    # vector = DenseRetriever()
 
     # test
     # query = "Who is the author of 'A Christmas Carol'?"
@@ -359,30 +360,30 @@ if __name__ == "__main__":
     # query = "when did hamburg become the biggest city of germany?"
 
     # data12
-    query = "how much did voyager therapeutics's stock rise in value over the past month?"
+    # query = "how much did voyager therapeutics's stock rise in value over the past month?"
 
     # data13
     # query = ""
 
-    data = "crag_data12"
-    topk = 10
+    # data = "crag_data12"
+    # topk = 10
 
-    entities = extract_entity(query)
-    triples = extract_triple(query)
+    # entities = extract_entity(query)
+    # triples = extract_triple(query)
 
-    bm25_docs = bm25_retrieve(
-        query=query, entities=entities, triples=triples, docs_set=data, topk=topk
-    )
-    vector_docs = dense_retrieve(
-        query=query, entities=entities, triples=triples, docs_set=data, topk=topk
-    )
+    # bm25_docs = bm25_retrieve(
+    #     query=query, entities=entities, triples=triples, docs_set=data, topk=topk
+    # )
+    # vector_docs = dense_retrieve(
+    #     query=query, entities=entities, triples=triples, docs_set=data, topk=topk
+    # )
 
-    query_et = query_with_et(query=query, entities=entities, triples=triples)
+    # query_et = query_with_et(query=query, entities=entities, triples=triples)
 
-    answer = hybrid_response(
-        query, query_et, vector_docs, bm25_docs, k=topk, temperature=0.6
-    )
-    print(
-        f"#############################\nQuery:\n{query}\n#############################\nAnswer:\n{answer}\n#############################"
-    )
-    pass
+    # answer = hybrid_response(
+    #     query, query_et, vector_docs, bm25_docs, k=topk, temperature=0.6
+    # )
+    # print(
+    #     f"#############################\nQuery:\n{query}\n#############################\nAnswer:\n{answer}\n#############################"
+    # )
+    # pass
