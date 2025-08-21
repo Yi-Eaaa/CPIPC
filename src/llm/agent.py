@@ -79,8 +79,12 @@ class Agent:
         top_p=0.7,
         multi_turn: bool = False,
         session_name="default",
+        logger=None,
         **kwargs
     ):
+        logger.info(f"System Prompt:\n{system_prompt}\n") if logger else None
+        logger.info(f"User_prompt: {prompt}\n") if logger else None
+
         messages = []
 
         if multi_turn:

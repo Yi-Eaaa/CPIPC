@@ -1,14 +1,21 @@
-from typing import Dict, List, Literal
+from typing import TypedDict, List, Dict, Optional
 
-from pydantic import BaseModel
+class QuestionNode(TypedDict):
+    id: str
+    question: str
+    answer: Optional[str]
+    knowledge_gap: Optional[str]
+    depth: int
+    provide_info: Optional[str]
+    children: List["QuestionNode"]
 
-
-class RAGState(BaseModel):
+class RAGState(TypedDict):
     query: str
-    subquestions: List[str] = []
-    answers: Dict[str, str] = {}
-    current_depth: int = 1
-    route_decision: str = ""
-    user_decision: str = ""
-    retry_times: int = 0
-    human_suggestion: str = ""
+    question_queue: List[str]
+    answers: Dict[str, str]
+    current_depth: int
+    route_decision: str
+    tree: QuestionNode
+    node_map: Dict[str, QuestionNode]
+    root_query: str
+    human_suggestion: Optional[str]
