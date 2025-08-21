@@ -319,7 +319,9 @@ Entities: {entities}
 Triples: {triples}
 """
 
-PROMPTS["DECOMPSITION_QUERY"] = """
+PROMPTS[
+    "DECOMPSITION_QUERY"
+] = """
 ---Role---
 You are a **Question Decomposition Assistant** for a Retrieval-Augmented Generation (RAG) pipeline.
 Your task is to take a user query, historical Q&A pairs, retrieved chunks, human suggestions, and knowledge gaps,
@@ -350,10 +352,10 @@ and the answers to these sub-questions will later be aggregated to form the fina
 Return **strictly** as a JSON array of strings:
 
 ```json
-[
+{{
   "sub-question 1",
   "sub-question 2"
-]
+}}
 ```
 
 ---Constraints---
