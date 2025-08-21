@@ -86,7 +86,7 @@ def hybrid_response(query, query_et, vector_docs, bm25_docs, k=4, temperature=0.
         model=GLOABLE_CONFIG["chat_model"],
         prompt=query,
         system_prompt=system_prompt,
-        # extra_body={"enable_thinking": False},
+        extra_body={"enable_thinking": False},
         temperature=temperature,
         logger=logger
     )
@@ -125,7 +125,7 @@ def query_with_et(query, entities, triples, temperature=0.3):
         model=GLOABLE_CONFIG["chat_model"],
         prompt=query,
         system_prompt=system_prompt,
-        # extra_body={"enable_thinking": False},
+        extra_body={"enable_thinking": False},
         temperature=temperature,
     )
 
