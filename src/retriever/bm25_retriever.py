@@ -36,7 +36,7 @@ class BM25Retriever:
     ):
         self.node_parser = MarkdownElementNodeParser(num_workers=1)
         self.retriever = None
-        self.base_dir = "./bm25_persist"
+        self.base_dir = "./datasets/bm25_persist"
 
     def construct_index(self, docs_dir="./docs", index_name="test", k=4, overwrite=False):
         """

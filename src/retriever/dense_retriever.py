@@ -34,7 +34,7 @@ Settings.chunk_overlap = GLOABLE_CONFIG["chunk_overlap"]
 class DenseRetriever:
     def __init__(
         self,
-        vectordb_dir="./chroma_db",
+        vectordb_dir="./datasets/chroma_db",
     ) -> None:
         self.vectordb_dir = vectordb_dir
         self.chroma_client = chromadb.PersistentClient(path=vectordb_dir)
@@ -42,7 +42,7 @@ class DenseRetriever:
         self.node_parser = MarkdownElementNodeParser(num_workers=1)
 
     def construct_index(self, docs_dir="./docs", collection_name="default", overwrite=False):
-        nodes_file = f"./bm25_persist/nodes_{collection_name}.pkl"
+        nodes_file = f"./datasets/bm25_persist/nodes_{collection_name}.pkl"
         if os.path.exists(nodes_file) and not overwrite:
             nodes = pickle.load(open(nodes_file, "rb"))
         else:
@@ -68,7 +68,7 @@ class DenseRetriever:
             vector_store=vector_store,
         )
 
-        # nodes_file = f"./bm25_persist/nodes_{collection_name}.pkl"
+        # nodes_file = f"./datasets/bm25_persist/nodes_{collection_name}.pkl"
         # nodes = pickle.load(open(nodes_file, "rb"))
         # base_nodes, objects = self.node_parser.get_nodes_and_objects(nodes)
         # vector_index = VectorStoreIndex(nodes=base_nodes+objects)
@@ -94,7 +94,7 @@ class DenseRetriever:
         """
         Query the index with a given query string.
         """
-        nodes_file = f"./bm25_persist/nodes_{collection_name}.pkl"
+        nodes_file = f"./datasets/bm25_persist/nodes_{collection_name}.pkl"
         nodes = pickle.load(open(nodes_file, "rb"))
         base_nodes, objects = self.node_parser.get_nodes_and_objects(nodes)
         vector_index = VectorStoreIndex(nodes=base_nodes + objects)
