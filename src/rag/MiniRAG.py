@@ -1,21 +1,16 @@
 
 from typing import List, Dict, Any, Optional
 from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.memory import InMemorySaver, MemorySaver
-from langgraph.types import StateSnapshot
+from langgraph.checkpoint.memory import InMemorySaver
 from src.llm.agent import Agent
 from src.llm.prompts import PROMPTS
 from src.config.config import GLOABLE_CONFIG
 from src.llm.operate import hybrid_response, extract_entity, extract_triple, query_with_et, bm25_retrieve, dense_retrieve
-from src.retriever.dense_retriever import DenseRetriever
-from src.retriever.bm25_retriever import BM25Retriever
-from src.llm.operate import rerank
 from logger import Logger
 from base import RAGState, QuestionNode
 import uuid
 import os
 import json
-import time
 
 class MiniRAG:
 
@@ -108,17 +103,17 @@ class MiniRAG:
         node_depth = state["node_map"][current_query].get("depth", 1)
         self.logger.info("▶️ check: %s (depth=%d)", current_query, node_depth)
 
-        entities = extract_entity(query)
-        triples = extract_triple(query)
+        entities = extract_entity(state["query"])
+        triples = extract_triple(state["query"])
 
         bm25_docs = bm25_retrieve(
-            query=query, entities=entities, triples=triples, docs_set=self.docs_set, topk=self.topk
+            query=state["query"], entities=entities, triples=triples, docs_set=self.docs_set, topk=self.topk
         )
         vector_docs = dense_retrieve(
-            query=query, entities=entities, triples=triples, docs_set=self.docs_set, topk=self.topk
+            query=state["query"], entities=entities, triples=triples, docs_set=self.docs_set, topk=self.topk
         )
 
-        query_et = query_with_et(query=query, entities=entities, triples=triples)
+        query_et = query_with_et(query=state["query"], entities=entities, triples=triples)
 
         sub_qa = "\n".join(f"{k}: {v}" for k, v in state["answers"].items())
 
@@ -127,7 +122,7 @@ class MiniRAG:
         )
 
         status, provide_info = hybrid_response(
-            query, query_et, vector_docs, bm25_docs, k=self.topk, logger=self.logger, history_qa=sub_qa
+            state["query"], query_et, vector_docs, bm25_docs, k=self.topk, logger=self.logger, history_qa=sub_qa
         )
         
         state["node_map"][current_query]["provide_info"] = provide_info
@@ -285,33 +280,20 @@ class MiniRAG:
 
 if __name__ == "__main__":
 
-    base_dir = "/home/hdd1/QA-Dataset/CRAG-KDD-Cup-2024/crag-retrieval-summarization"
-    raw_data_path = os.path.join(base_dir, "crag_task_1_dev_v4_release.jsonl")
-    md_folder = os.path.join(base_dir, "md_data")
-    os.makedirs(md_folder, exist_ok=True)
+    qa_path = "dataset/raw_QA.json"
+    with open(qa_path) as f:
+        qa_list = json.load(f)
+    
+    print(len(qa_list))
 
-    queries = []
-    answers = []
+    data_choices = [2, 3, 4]
 
-    with open(raw_data_path, "r", encoding="utf-8") as file:
-        for line in file:
-            data = json.loads(line)
-            if "query" in data and "answer" in data:
-                queries.append(data["query"])
-                answers.append(data["answer"])
+    chosen_qas = [qa_list[i] for i in data_choices]
 
-    from tqdm import tqdm
+    for idx, qa_pair in enumerate(chosen_qas):
+        docs_set = f"crag_data{data_choices[idx]}"
+        query = qa_pair["query"]
+        answer = qa_pair["answer"]
+        rag = MiniRAG(log_name=query, docs_set=docs_set)
+        rag.run(query)
 
-    log_failed = "./logs/failed_queries.log"
-
-    with open(log_failed, "w", encoding="utf-8") as log_file:
-        for idx, query in enumerate(tqdm(queries, desc="Running MiniRAG")):
-            try:
-                rag = MiniRAG(log_name=query, docs_set=f"crag_data{idx}")
-                rag.run(query)
-                rag.logger.info("Answer: %s", answers[idx])
-            except Exception as e:
-                error_msg = f"[Error] Query {idx} failed: {query}\nReason: {e}\n\n"
-                print(error_msg)
-                log_file.write(error_msg)
-                continue
